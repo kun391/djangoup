@@ -1,0 +1,43 @@
+version: '3'
+services:
+  # container for API
+  app:
+    build:
+      context: .
+      args:
+        - MYSQL=yes
+    ports:
+      - 8000:80
+    depends_on:
+      - db
+    volumes:
+      - .:/usr/src/app
+      - ./conf/nginx.conf:/etc/nginx/sites-available/default
+      - ./passenger_wsgi.py:/usr/src/app/demo/passenger_wsgi.py
+    working_dir: /usr/src/app/demo
+    command:
+    - /bin/bash
+    - -c
+    - |
+      service nginx restart
+      tail -f /dev/null 2>&1
+    restart: on-failure
+  db:
+    image: mysql:5.7
+    ports:
+      - 3305:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: user123
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - 9029:80
+    depends_on:
+      - db
+    environment:
+      PMA_HOSTS: db
+      PMA_USER: dbuser
+      PMA_PASSWORD: user123
