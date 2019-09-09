@@ -1,51 +1,42 @@
 # As such, a valid Dockerfile must have FROM as its first instruction.
-FROM ubuntu:18.04
+FROM python:3.7-stretch
 
 # The MAINTAINER instruction allows you to set the Author field of the generated images.
 MAINTAINER KUN <nguyentruongthanh.dn@gmail.com>
 
-USER root
 
-ARG MYSQL=yes
-
-ENV DEBIAN_FRONTEND noninteractive
-ENV DEBCONF_NONINTERACTIVE_SEEN true
-
-RUN apt-get update && apt-get install -y --no-install-recommends \ 
+RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-utils \
     nginx \
-    python3-dev \
-    python3-pip \
     curl \
     dirmngr \
     gnupg \
+    vim \
     g++
 
-RUN apt-get update && apt-get install -y libmysqlclient-dev && pip3 install setuptools && pip3 install -U wheel && pip3 install mysqlclient
+RUN pip install uwsgi
+RUN pip install django
 
-RUN pip3 install django
+# Copy the base uWSGI ini file to enable default dynamic uwsgi process number
+COPY uwsgi.ini /etc/uwsgi/
 
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 561F9B9CAC40B2F7
-RUN apt-get install -y --no-install-recommends apt-transport-https ca-certificates
+# Install Supervisord
+RUN apt-get update && apt-get install -y supervisor
 
-RUN touch /etc/apt/sources.list.d/passenger.list
-RUN sh -c 'echo deb https://oss-binaries.phusionpassenger.com/apt/passenger bionic main > /etc/apt/sources.list.d/passenger.list'
+# Custom Supervisord config
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN apt-get update 
+COPY conf/nginx.conf /etc/nginx/sites-available/app.nginx.conf
+# Which uWSGI .ini file should be used, to make it customizable
+ENV UWSGI_INI /etc/uwsgi/uwsgi.ini
 
-#Install Passenger + Nginx module
-RUN apt-get install -y --no-install-recommends libnginx-mod-http-passenger
+# By default, run 2 processes
+ENV UWSGI_CHEAPER 2
 
-RUN if [ ! -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf ]; then sudo ln -s /usr/share/nginx/modules-available/mod-http-passenger.load /etc/nginx/modules-enabled/50-mod-http-passenger.conf ; fi
+# By default, when on demand, run up to 16 processes
+ENV UWSGI_PROCESSES 16
 
-RUN ls /etc/nginx/conf.d/mod-http-passenger.conf
-
-RUN curl https://raw.githubusercontent.com/kennethreitz/pipenv/master/get-pipenv.py | python3
-RUN export LC_ALL=C.UTF-8
-
-RUN /usr/bin/passenger-config validate-install
-RUN /usr/sbin/passenger-memory-stats
 
 EXPOSE 80 443
 
-CMD ["nginx", "start"]
+CMD ["/usr/bin/supervisord"]

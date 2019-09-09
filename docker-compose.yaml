@@ -4,22 +4,21 @@ services:
   app:
     build:
       context: .
-      args:
-        - MYSQL=yes
     ports:
       - 8000:80
     depends_on:
       - db
     volumes:
       - .:/usr/src/app
-      - ./conf/nginx.conf:/etc/nginx/sites-available/default
-      - ./passenger_wsgi.py:/usr/src/app/demo/passenger_wsgi.py
-    working_dir: /usr/src/app/demo
+      - ./conf/nginx.conf:/etc/nginx/sites-available/app.nginx.conf
+      - ./uwsgi.ini:/usr/src/app/api/uwsgi.ini
+    working_dir: /usr/src/app/api
     command:
     - /bin/bash
     - -c
     - |
-      service nginx restart
+      ln -s /etc/nginx/sites-available/app.nginx.conf /etc/nginx/sites-enabled
+      uwsgi --ini uwsgi.ini
       tail -f /dev/null 2>&1
     restart: on-failure
   db:
@@ -31,13 +30,3 @@ services:
       MYSQL_DATABASE: db
       MYSQL_USER: dbuser
       MYSQL_PASSWORD: user123
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    ports:
-      - 9029:80
-    depends_on:
-      - db
-    environment:
-      PMA_HOSTS: db
-      PMA_USER: dbuser
-      PMA_PASSWORD: user123
