@@ -1,9 +1,8 @@
 # As such, a valid Dockerfile must have FROM as its first instruction.
-FROM python:3.7-stretch
+FROM iamjohnnym/bionic-python:3.7
 
 # The MAINTAINER instruction allows you to set the Author field of the generated images.
 MAINTAINER KUN <nguyentruongthanh.dn@gmail.com>
-
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-utils \
@@ -14,8 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     g++
 
+RUN pip install --upgrade pip
 RUN pip install uwsgi
 RUN pip install django
+RUN pip install gunicorn
 
 # Copy the base uWSGI ini file to enable default dynamic uwsgi process number
 COPY uwsgi.ini /etc/uwsgi/
